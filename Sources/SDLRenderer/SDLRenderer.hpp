@@ -11,10 +11,6 @@
 #include <string>
 #include <SDL.h>
 
-extern "C"  {
-  #include <libavcodec/avcodec.h>
-}
-
 class SDLRenderer {
 public:
   enum class State {
@@ -37,7 +33,8 @@ public:
   SDLRenderer(const std::string& windowTitle, int height, int width);
 
   void init();
-  void renderFrame(const AVFrame *frame);
+  void openAudio(const int freq, const int channels, void* userdata, const SDL_AudioCallback& callback) const;
+  void renderFrame(const uint8_t *const *data, const int *linesize);
 
   State getState() const;
 };

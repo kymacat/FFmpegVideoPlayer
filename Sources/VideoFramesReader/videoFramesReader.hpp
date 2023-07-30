@@ -8,6 +8,8 @@
 #ifndef videoFramesReader_hpp
 #define videoFramesReader_hpp
 
+#include "packetsQueue.hpp"
+
 #include <functional>
 
 extern "C"  {
@@ -21,13 +23,24 @@ public:
     notOpened,
     opened
   };
+
+  struct AudioSpec {
+    int freq;        /**< DSP frequency -- samples per second */
+    int channels;    /**< Number of channels: 1 mono, 2 stereo */
+  };
   
 private:
   const char *mVideoUrl;
   State mState;
+  PacketQueue mAudioPacketsQueue {};
+
   AVFormatContext *mContext = nullptr;
   const AVStream *mVideoStream = nullptr;
-  AVCodecContext *mCodecContext = nullptr;
+  const AVStream *mAudioStream = nullptr;
+  AVCodecContext *mVideoCodecContext = nullptr;
+  AVCodecContext *mAudioCodecContext = nullptr;
+
+  AVCodecContext* makeCodecContext(const AVCodecParameters *params) const;
 
 public:
   VideoFramesReader(const char *videoUrl);
@@ -35,10 +48,15 @@ public:
 
   void openVideo();
 
-  void readVideoFrames(AVPixelFormat pixelFormat, std::function<bool(const AVFrame*)> framesProcessor) const;
+  void startProcessing(AVPixelFormat pixelFormat, std::function<bool(const AVFrame*)> framesProcessor);
+  const AVFrame* getNextAudioFrame(AVSampleFormat sampleFormat);
+
   void printVideoInfo() const;
+  void printAudioStreamInfo() const;
+
   int getWidth() const;
   int getHeight() const;
+  AudioSpec getAudioInfo() const;
 };
 
 #endif /* VideoFramesReader_hpp */

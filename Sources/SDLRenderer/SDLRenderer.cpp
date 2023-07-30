@@ -10,10 +10,6 @@
 #include <string>
 #include <SDL.h>
 
-extern "C"  {
-  #include <libavcodec/avcodec.h>
-}
-
 SDLRenderer::SDLRenderer(const std::string& windowTitle, int height, int width)
 : mWindowTitle { windowTitle }, mHeight { height }, mWidth { width }, mState { State::notInitialized } {
 }
@@ -55,7 +51,27 @@ void SDLRenderer::init() {
   mState = State::active;
 }
 
-void SDLRenderer::renderFrame(const AVFrame *frame) {
+void SDLRenderer::openAudio(
+                            const int freq,
+                            const int channels,
+                            void* userdata,
+                            const SDL_AudioCallback& callback
+                            ) const {
+  SDL_AudioSpec wantedSpec, spec;
+
+  wantedSpec.freq = freq;
+  wantedSpec.format = AUDIO_S16SYS;
+  wantedSpec.channels = channels;
+  wantedSpec.silence = 0;
+  wantedSpec.samples = 1024;
+  wantedSpec.callback = callback;
+  wantedSpec.userdata = userdata;
+
+  SDL_AudioDeviceID id = SDL_OpenAudioDevice(NULL, 0, &wantedSpec, &spec, SDL_AUDIO_ALLOW_ANY_CHANGE);
+  SDL_PauseAudioDevice(id, 0);
+}
+
+void SDLRenderer::renderFrame(const uint8_t *const *data, const int *linesize) {
   if (mState != State::active)
     throw std::runtime_error("You need to call the initialize function before rendering");
 
@@ -63,12 +79,12 @@ void SDLRenderer::renderFrame(const AVFrame *frame) {
 
   SDL_UpdateYUVTexture(mTexture,
                        NULL,
-                       frame->data[0],
-                       frame->linesize[0],
-                       frame->data[1],
-                       frame->linesize[1],
-                       frame->data[2],
-                       frame->linesize[2]);
+                       data[0],
+                       linesize[0],
+                       data[1],
+                       linesize[1],
+                       data[2],
+                       linesize[2]);
 
 
   SDL_RenderClear(mRenderer);
@@ -87,7 +103,6 @@ void SDLRenderer::renderFrame(const AVFrame *frame) {
     default:
       break;
   }
-  SDL_Delay(10);
 }
 
 SDLRenderer::State SDLRenderer::getState() const {
